@@ -1,5 +1,7 @@
 # Synthesis
 
+<img src="images/icon.jpg" alt="Synthesis Nebula Icon" width="200"/>
+
 Execution engine for the Tekton project ecosystem.
 
 ## Overview
