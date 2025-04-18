@@ -1,25 +1,32 @@
 # Synthesis
 
-<img src="images/icon.jpg" alt="Synthesis Nebula Icon" width="800"/>
-
-Execution engine for the Tekton project ecosystem.
-
 ## Overview
 
-Synthesis is the execution component of the Tekton ecosystem. It takes plans created by Prometheus and implements them in a structured, phase-based approach, culminating in complete solutions.
+Synthesis is the execution engine for the Tekton ecosystem. It handles process execution, workflow management, and integration with external systems.
 
-## Features
+## Key Features
 
-- **Phase-Based Execution**: Breaks complex plans into logical phases
-- **Step-by-Step Implementation**: Executes each phase as discrete, manageable steps
-- **Component Integration**: Assembles partial solutions into cohesive wholes
-- **Progress Tracking**: Monitors execution status with detailed logging
-- **Adaptive Execution**: Adjusts implementation based on feedback and environmental changes
+- Step-by-step execution of workflows
+- Condition evaluation for branching
+- Integration with external systems
+- Phase management for complex processes
+- Error handling and recovery
 
-## Integration
+## Quick Start
 
-Synthesis works closely with:
-- **Prometheus**: Receives execution plans and reports progress
-- **Ergon**: Utilizes agents for specific execution tasks
-- **Codex**: Employs code generation and management capabilities
-- **Engram**: Accesses memory for context-aware execution
+```bash
+# Register with Hermes
+python -m Synthesis/scripts/register_with_hermes.py
+
+# Start with Tekton
+./scripts/tekton_launch --components synthesis
+```
+
+## Documentation
+
+For detailed documentation, see the following resources in the MetaData directory:
+
+- [Component Summaries](../MetaData/ComponentSummaries.md) - Overview of all Tekton components
+- [Tekton Architecture](../MetaData/TektonArchitecture.md) - Overall system architecture
+- [Component Integration](../MetaData/ComponentIntegration.md) - How components interact
+- [CLI Operations](../MetaData/CLI_Operations.md) - Command-line operations
