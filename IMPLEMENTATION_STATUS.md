@@ -55,7 +55,7 @@ Synthesis is now fully implemented as Tekton's execution and integration engine.
 |-----------|--------|-------|
 | setup.py | ✅ Complete | Package configuration with dependencies |
 | setup.sh | ✅ Complete | Installation script with virtual environment setup |
-| run_synthesis.sh | ✅ Complete | Script to run the Synthesis component |
+| Launch capability | ✅ Complete | Component can be launched via standard `tekton-launch` script |
 | README.md | ✅ Complete | Comprehensive documentation |
 
 ## Documentation

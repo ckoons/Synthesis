@@ -60,10 +60,10 @@ Synthesis follows the Single Port Architecture pattern:
    ./setup.sh
    ```
 
-3. Start Synthesis:
+3. Start Synthesis using the unified launcher:
    ```bash
    cd ..
-   ./run_synthesis.sh
+   ./scripts/tekton-launch --components synthesis
    ```
 
 ## Quick Start
