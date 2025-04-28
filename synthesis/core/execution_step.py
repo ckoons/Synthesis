@@ -18,7 +18,8 @@ from synthesis.core.execution_models import (
 from synthesis.core.step_handlers import (
     handle_command_step, handle_function_step, handle_api_step,
     handle_condition_step, handle_loop_step, handle_subprocess_step,
-    handle_notify_step, handle_wait_step, handle_variable_step
+    handle_notify_step, handle_wait_step, handle_variable_step,
+    handle_llm_step
 )
 from synthesis.core.loop_handlers import handle_loop_step
 
@@ -193,4 +194,5 @@ class ExecutionStep:
             "notify": handle_notify_step,
             "wait": handle_wait_step,
             "variable": handle_variable_step,
+            "llm": handle_llm_step,
         }
