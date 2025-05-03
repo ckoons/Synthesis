@@ -10,9 +10,9 @@ import logging
 import asyncio
 from typing import Dict, List, Any, Optional, Union, Callable, AsyncIterator
 
-from tekton_llm_client import Client
-from tekton_llm_client.models import ChatMessage, ChatCompletionOptions, ChatRole
-from tekton_llm_client.adapters import FallbackAdapter
+from tekton_llm_client import TektonLLMClient
+from tekton_llm_client.models import Message, CompletionOptions, MessageRole
+from tekton_llm_client.adapters import LocalFallbackAdapter
 from tekton_llm_client.exceptions import TektonLLMError
 
 logger = logging.getLogger(__name__)
@@ -57,13 +57,13 @@ class LLMAdapter:
         try:
             adapter = None
             if self.fallback_enabled:
-                adapter = FallbackAdapter(
+                adapter = LocalFallbackAdapter(
                     fallback_models=self.fallback_models,
                     max_retries=2,
                     timeout=self.timeout
                 )
             
-            self.client = Client(
+            self.client = TektonLLMClient(
                 base_url=self.base_url,
                 default_model=self.default_model,
                 timeout=self.timeout,
@@ -112,8 +112,8 @@ class LLMAdapter:
         
         try:
             messages = [
-                ChatMessage(
-                    role=ChatRole.SYSTEM,
+                Message(
+                    role=MessageRole.SYSTEM,
                     content=(
                         "You are an AI assistant that enhances execution plans for Synthesis, "
                         "Tekton's execution and integration engine. Your task is to analyze "
@@ -125,13 +125,13 @@ class LLMAdapter:
                         "Return the enhanced plan as valid JSON that can be parsed directly."
                     )
                 ),
-                ChatMessage(
-                    role=ChatRole.USER,
+                Message(
+                    role=MessageRole.USER,
                     content=f"Enhance the following execution plan:\n\n```json\n{plan}\n```"
                 )
             ]
             
-            options = ChatCompletionOptions(
+            options = CompletionOptions(
                 temperature=0.2,
                 max_tokens=4000
             )
@@ -191,8 +191,8 @@ class LLMAdapter:
         
         try:
             messages = [
-                ChatMessage(
-                    role=ChatRole.SYSTEM,
+                Message(
+                    role=MessageRole.SYSTEM,
                     content=(
                         "You are an AI assistant that analyzes execution results for Synthesis, "
                         "Tekton's execution and integration engine. Your task is to analyze "
@@ -208,8 +208,8 @@ class LLMAdapter:
                         "- recommendations: array of recommendations for improvement"
                     )
                 ),
-                ChatMessage(
-                    role=ChatRole.USER,
+                Message(
+                    role=MessageRole.USER,
                     content=(
                         f"Analyze the following execution result for execution {execution_id}:\n\n"
                         f"Original plan:\n```json\n{plan}\n```\n\n"
@@ -218,7 +218,7 @@ class LLMAdapter:
                 )
             ]
             
-            options = ChatCompletionOptions(
+            options = CompletionOptions(
                 temperature=0.2,
                 max_tokens=2000
             )
@@ -281,8 +281,8 @@ class LLMAdapter:
         
         try:
             messages = [
-                ChatMessage(
-                    role=ChatRole.SYSTEM,
+                Message(
+                    role=MessageRole.SYSTEM,
                     content=(
                         "You are an AI assistant that generates shell commands for Synthesis, "
                         "Tekton's execution and integration engine. Your task is to generate "
@@ -291,8 +291,8 @@ class LLMAdapter:
                         "Ensure the command is properly escaped and secure."
                     )
                 ),
-                ChatMessage(
-                    role=ChatRole.USER,
+                Message(
+                    role=MessageRole.USER,
                     content=(
                         f"Context:\n```json\n{context}\n```\n\n"
                         f"Instruction: {instruction}\n\n"
@@ -301,7 +301,7 @@ class LLMAdapter:
                 )
             ]
             
-            options = ChatCompletionOptions(
+            options = CompletionOptions(
                 temperature=0.2,
                 max_tokens=500
             )
@@ -347,8 +347,8 @@ class LLMAdapter:
         
         try:
             messages = [
-                ChatMessage(
-                    role=ChatRole.SYSTEM,
+                Message(
+                    role=MessageRole.SYSTEM,
                     content=(
                         "You are an AI assistant that provides real-time analysis of execution data "
                         "for Synthesis, Tekton's execution and integration engine. Your task is to "
@@ -357,13 +357,13 @@ class LLMAdapter:
                         "and providing context that would be helpful to a user monitoring this execution."
                     )
                 ),
-                ChatMessage(
-                    role=ChatRole.USER,
+                Message(
+                    role=MessageRole.USER,
                     content=f"Provide a real-time analysis of this execution data:\n\n```json\n{execution_data}\n```"
                 )
             ]
             
-            options = ChatCompletionOptions(
+            options = CompletionOptions(
                 temperature=0.3,
                 max_tokens=1500,
                 stream=True
