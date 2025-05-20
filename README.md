@@ -28,13 +28,15 @@ Synthesis provides a robust execution system that can:
 - **Error Recovery**: Built-in mechanisms for handling errors and retrying failed operations
 - **Real-time Monitoring**: WebSocket-based real-time updates on execution progress
 - **Event System**: Comprehensive event generation and subscription capabilities
+- **FastMCP Integration**: 16 MCP tools across 3 capabilities for data synthesis, integration orchestration, and workflow composition
 
 ## Architecture
 
 Synthesis follows the Single Port Architecture pattern:
 
-- **API Server (Port 8009)**:
+- **API Server (Port 8011)**:
   - HTTP API: `/api/...` - RESTful endpoints for execution management
+  - MCP API: `/api/mcp/v2/...` - FastMCP endpoints for data synthesis and workflow composition
   - WebSocket: `/ws` - Real-time updates on execution progress
   - Health: `/health` - Service health check endpoint
   - Metrics: `/metrics` - Operational metrics endpoint
@@ -76,6 +78,49 @@ python -m synthesis.scripts.register_with_hermes
 ./scripts/tekton-launch --components synthesis
 ```
 
+## MCP Integration
+
+Synthesis provides comprehensive FastMCP integration with 16 tools across 3 capability categories:
+
+### Capabilities
+
+- **Data Synthesis**: 6 tools for synthesizing and unifying data from multiple components
+- **Integration Orchestration**: 6 tools for orchestrating complex component integrations  
+- **Workflow Composition**: 4 tools for composing and executing multi-component workflows
+
+### Quick MCP Usage
+
+```bash
+# Test all MCP functionality
+./examples/run_fastmcp_test.sh
+
+# Run Python test client
+python examples/test_fastmcp.py
+
+# Execute a data synthesis tool
+curl -X POST http://localhost:8011/api/mcp/v2/tools/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tool_name": "synthesize_component_data",
+    "arguments": {
+      "component_ids": ["athena", "engram"],
+      "synthesis_type": "contextual"
+    }
+  }'
+
+# Execute a predefined workflow
+curl -X POST http://localhost:8011/api/mcp/v2/execute-synthesis-workflow \
+  -H "Content-Type: application/json" \
+  -d '{
+    "workflow_name": "data_unification",
+    "parameters": {
+      "component_ids": ["athena", "engram"]
+    }
+  }'
+```
+
+For detailed MCP documentation, see [MCP_INTEGRATION.md](MCP_INTEGRATION.md).
+
 ## Usage
 
 ### API Usage
@@ -83,7 +128,7 @@ python -m synthesis.scripts.register_with_hermes
 #### Start an Execution
 
 ```bash
-curl -X POST http://localhost:8009/api/executions \
+curl -X POST http://localhost:8011/api/executions \
   -H "Content-Type: application/json" \
   -d '{
     "plan": {

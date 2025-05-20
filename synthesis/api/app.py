@@ -168,10 +168,14 @@ async def root():
         "documentation": f"http://localhost:{port}/docs"
     }
 
+# Import and include MCP router
+from synthesis.api.fastmcp_endpoints import mcp_router
+
 # Include routers in app
 app.include_router(router)
 app.include_router(ws_router)
 app.include_router(metrics_router)
+app.include_router(mcp_router)
 
 # Dependency to get the execution engine
 async def get_execution_engine():
