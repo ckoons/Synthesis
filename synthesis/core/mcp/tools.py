@@ -864,8 +864,8 @@ data_synthesis_tools = [
         name="synthesize_component_data",
         description="Synthesize and combine data from multiple components",
         function=synthesize_component_data,
-        parameters={
-            "component_ids": {"type": "array", "description": "List of component IDs to synthesize data from"},
+        input_schema={"parameters": {
+            "component_ids": {"type": "array", "description": "List of component IDs to synthesize data from"}, "return_type": {"type": "object"}},
             "data_types": {"type": "array", "description": "Types of data to include in synthesis", "required": False},
             "synthesis_method": {"type": "string", "description": "Method for combining data", "default": "merge"},
             "time_range": {"type": "object", "description": "Optional time range for data selection", "required": False}
@@ -875,8 +875,8 @@ data_synthesis_tools = [
         name="create_unified_report",
         description="Create a unified report combining data from multiple components",
         function=create_unified_report,
-        parameters={
-            "report_type": {"type": "string", "description": "Type of report to generate", "default": "comprehensive"},
+        input_schema={"parameters": {
+            "report_type": {"type": "string", "description": "Type of report to generate", "default": "comprehensive"}, "return_type": {"type": "object"}},
             "components": {"type": "array", "description": "Specific components to include", "required": False},
             "metrics": {"type": "array", "description": "Specific metrics to include", "required": False},
             "format_type": {"type": "string", "description": "Output format for the report", "default": "json"}
@@ -886,8 +886,8 @@ data_synthesis_tools = [
         name="merge_data_streams",
         description="Merge multiple real-time data streams into a unified stream",
         function=merge_data_streams,
-        parameters={
-            "stream_sources": {"type": "array", "description": "List of data stream sources"},
+        input_schema={"parameters": {
+            "stream_sources": {"type": "array", "description": "List of data stream sources"}, "return_type": {"type": "object"}},
             "merge_strategy": {"type": "string", "description": "Strategy for merging streams", "default": "temporal"},
             "buffer_size": {"type": "integer", "description": "Size of the merge buffer", "default": 1000},
             "conflict_resolution": {"type": "string", "description": "Method for resolving data conflicts", "default": "latest"}
@@ -897,8 +897,8 @@ data_synthesis_tools = [
         name="detect_data_conflicts",
         description="Detect and analyze conflicts between different data sources",
         function=detect_data_conflicts,
-        parameters={
-            "data_sources": {"type": "array", "description": "List of data sources to analyze"},
+        input_schema={"parameters": {
+            "data_sources": {"type": "array", "description": "List of data sources to analyze"}, "return_type": {"type": "object"}},
             "detection_method": {"type": "string", "description": "Method for conflict detection", "default": "schema_comparison"},
             "sensitivity": {"type": "number", "description": "Sensitivity level for conflict detection", "default": 0.8},
             "resolution_suggestions": {"type": "boolean", "description": "Whether to provide resolution suggestions", "default": True}
@@ -908,8 +908,8 @@ data_synthesis_tools = [
         name="optimize_data_flow",
         description="Optimize data flow paths and processing for better performance",
         function=optimize_data_flow,
-        parameters={
-            "flow_configuration": {"type": "object", "description": "Current data flow configuration"},
+        input_schema={"parameters": {
+            "flow_configuration": {"type": "object", "description": "Current data flow configuration"}, "return_type": {"type": "object"}},
             "optimization_targets": {"type": "array", "description": "Specific targets for optimization", "required": False},
             "constraints": {"type": "object", "description": "Constraints to consider during optimization", "required": False}
         }
@@ -918,8 +918,8 @@ data_synthesis_tools = [
         name="validate_synthesis_quality",
         description="Validate the quality of synthesized data against defined criteria",
         function=validate_synthesis_quality,
-        parameters={
-            "synthesis_id": {"type": "string", "description": "ID of the synthesis to validate"},
+        input_schema={"parameters": {
+            "synthesis_id": {"type": "string", "description": "ID of the synthesis to validate"}, "return_type": {"type": "object"}},
             "validation_criteria": {"type": "array", "description": "Specific criteria to validate against", "required": False},
             "quality_threshold": {"type": "number", "description": "Minimum quality threshold for passing validation", "default": 0.8}
         }
@@ -2220,8 +2220,8 @@ integration_orchestration_tools = [
         name="orchestrate_component_integration",
         description="Orchestrate integration between multiple components",
         function=orchestrate_component_integration,
-        parameters={
-            "components": {"type": "array", "description": "List of components to integrate"},
+        input_schema={"parameters": {
+            "components": {"type": "array", "description": "List of components to integrate"}, "return_type": {"type": "object"}},
             "integration_pattern": {"type": "string", "description": "Pattern for integration architecture", "default": "hub_spoke"},
             "requirements": {"type": "object", "description": "Specific integration requirements", "required": False},
             "monitoring_level": {"type": "string", "description": "Level of monitoring to implement", "default": "detailed"}
@@ -2231,8 +2231,8 @@ integration_orchestration_tools = [
         name="design_integration_workflow",
         description="Design a workflow for component integration processes",
         function=design_integration_workflow,
-        parameters={
-            "workflow_name": {"type": "string", "description": "Name of the integration workflow"},
+        input_schema={"parameters": {
+            "workflow_name": {"type": "string", "description": "Name of the integration workflow"}, "return_type": {"type": "object"}},
             "participating_components": {"type": "array", "description": "Components involved in the workflow"},
             "workflow_type": {"type": "string", "description": "Type of workflow (sequential, parallel, conditional)", "default": "sequential"},
             "error_handling": {"type": "string", "description": "Strategy for handling errors", "default": "retry_with_fallback"}
@@ -2242,8 +2242,8 @@ integration_orchestration_tools = [
         name="monitor_integration_health",
         description="Monitor the health and performance of component integrations",
         function=monitor_integration_health,
-        parameters={
-            "integration_id": {"type": "string", "description": "ID of the integration to monitor"},
+        input_schema={"parameters": {
+            "integration_id": {"type": "string", "description": "ID of the integration to monitor"}, "return_type": {"type": "object"}},
             "monitoring_window": {"type": "string", "description": "Time window for monitoring data", "default": "1_hour"},
             "include_predictions": {"type": "boolean", "description": "Whether to include predictive analysis", "default": True}
         }
@@ -2252,8 +2252,8 @@ integration_orchestration_tools = [
         name="resolve_integration_conflicts",
         description="Resolve conflicts detected in component integrations",
         function=resolve_integration_conflicts,
-        parameters={
-            "conflict_id": {"type": "string", "description": "ID of the conflict to resolve"},
+        input_schema={"parameters": {
+            "conflict_id": {"type": "string", "description": "ID of the conflict to resolve"}, "return_type": {"type": "object"}},
             "resolution_strategy": {"type": "string", "description": "Strategy for conflict resolution", "default": "priority_based"},
             "automatic_resolution": {"type": "boolean", "description": "Whether to apply resolution automatically", "default": False}
         }
@@ -2262,8 +2262,8 @@ integration_orchestration_tools = [
         name="optimize_integration_performance",
         description="Optimize the performance of component integrations",
         function=optimize_integration_performance,
-        parameters={
-            "integration_id": {"type": "string", "description": "ID of the integration to optimize"},
+        input_schema={"parameters": {
+            "integration_id": {"type": "string", "description": "ID of the integration to optimize"}, "return_type": {"type": "object"}},
             "optimization_targets": {"type": "array", "description": "Specific performance targets to optimize", "required": False},
             "current_metrics": {"type": "object", "description": "Current performance metrics to use as baseline", "required": False}
         }
@@ -2272,8 +2272,8 @@ integration_orchestration_tools = [
         name="validate_integration_completeness",
         description="Validate that integration implementation meets all specified requirements",
         function=validate_integration_completeness,
-        parameters={
-            "integration_specification": {"type": "object", "description": "Specification document for the integration"},
+        input_schema={"parameters": {
+            "integration_specification": {"type": "object", "description": "Specification document for the integration"}, "return_type": {"type": "object"}},
             "validation_level": {"type": "string", "description": "Level of validation to perform", "default": "comprehensive"}
         }
     )
@@ -3257,8 +3257,8 @@ workflow_composition_tools = [
         name="compose_multi_component_workflow",
         description="Compose a complex workflow across multiple components",
         function=compose_multi_component_workflow,
-        parameters={
-            "workflow_name": {"type": "string", "description": "Name for the composed workflow"},
+        input_schema={"parameters": {
+            "workflow_name": {"type": "string", "description": "Name for the composed workflow"}, "return_type": {"type": "object"}},
             "components": {"type": "array", "description": "List of components to include in the workflow"},
             "composition_pattern": {"type": "string", "description": "Pattern for composing the workflow", "default": "pipeline"},
             "execution_strategy": {"type": "string", "description": "Strategy for workflow execution", "default": "immediate"}
@@ -3268,8 +3268,8 @@ workflow_composition_tools = [
         name="execute_composed_workflow",
         description="Execute a previously composed multi-component workflow",
         function=execute_composed_workflow,
-        parameters={
-            "workflow_id": {"type": "string", "description": "ID of the workflow to execute"},
+        input_schema={"parameters": {
+            "workflow_id": {"type": "string", "description": "ID of the workflow to execute"}, "return_type": {"type": "object"}},
             "input_data": {"type": "object", "description": "Input data for the workflow"},
             "execution_options": {"type": "object", "description": "Optional execution configuration overrides", "required": False}
         }
@@ -3278,8 +3278,8 @@ workflow_composition_tools = [
         name="analyze_workflow_performance",
         description="Analyze the performance of a composed workflow over time",
         function=analyze_workflow_performance,
-        parameters={
-            "workflow_id": {"type": "string", "description": "ID of the workflow to analyze"},
+        input_schema={"parameters": {
+            "workflow_id": {"type": "string", "description": "ID of the workflow to analyze"}, "return_type": {"type": "object"}},
             "analysis_period": {"type": "string", "description": "Time period for performance analysis", "default": "last_week"},
             "include_optimization_suggestions": {"type": "boolean", "description": "Whether to include optimization suggestions", "default": True}
         }
@@ -3288,8 +3288,8 @@ workflow_composition_tools = [
         name="optimize_workflow_execution",
         description="Optimize workflow execution for better performance, reliability, and efficiency",
         function=optimize_workflow_execution,
-        parameters={
-            "workflow_id": {"type": "string", "description": "ID of the workflow to optimize"},
+        input_schema={"parameters": {
+            "workflow_id": {"type": "string", "description": "ID of the workflow to optimize"}, "return_type": {"type": "object"}},
             "optimization_goals": {"type": "array", "description": "Specific goals for optimization", "required": False},
             "constraints": {"type": "object", "description": "Constraints to consider during optimization", "required": False}
         }

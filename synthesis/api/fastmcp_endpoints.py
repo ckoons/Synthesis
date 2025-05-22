@@ -48,9 +48,9 @@ fastmcp_server = FastMCPServer(
 )
 
 # Register capabilities and tools
-fastmcp_server.register_capability(DataSynthesisCapability)
-fastmcp_server.register_capability(IntegrationOrchestrationCapability)
-fastmcp_server.register_capability(WorkflowCompositionCapability)
+fastmcp_server.register_capability(DataSynthesisCapability())
+fastmcp_server.register_capability(IntegrationOrchestrationCapability())
+fastmcp_server.register_capability(WorkflowCompositionCapability())
 
 # Register all tools
 for tool in data_synthesis_tools + integration_orchestration_tools + workflow_composition_tools:

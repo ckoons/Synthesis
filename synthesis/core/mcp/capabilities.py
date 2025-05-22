@@ -12,9 +12,9 @@ from tekton.mcp.fastmcp.schema import MCPCapability
 class DataSynthesisCapability(MCPCapability):
     """Capability for data synthesis and unification across components."""
     
-    name = "data_synthesis"
-    description = "Synthesize and unify data from multiple components and sources"
-    version = "1.0.0"
+    name: str = "data_synthesis"
+    description: str = "Synthesize and unify data from multiple components and sources"
+    version: str = "1.0.0"
     
     @classmethod
     def get_supported_operations(cls) -> List[str]:
@@ -46,9 +46,9 @@ class DataSynthesisCapability(MCPCapability):
 class IntegrationOrchestrationCapability(MCPCapability):
     """Capability for orchestrating complex component integrations."""
     
-    name = "integration_orchestration"
-    description = "Orchestrate and manage complex integrations between components"
-    version = "1.0.0"
+    name: str = "integration_orchestration"
+    description: str = "Orchestrate and manage complex integrations between components"
+    version: str = "1.0.0"
     
     @classmethod
     def get_supported_operations(cls) -> List[str]:
@@ -79,9 +79,9 @@ class IntegrationOrchestrationCapability(MCPCapability):
 class WorkflowCompositionCapability(MCPCapability):
     """Capability for composing and executing multi-component workflows."""
     
-    name = "workflow_composition"
-    description = "Compose and execute complex workflows across multiple components"
-    version = "1.0.0"
+    name: str = "workflow_composition"
+    description: str = "Compose and execute complex workflows across multiple components"
+    version: str = "1.0.0"
     
     @classmethod
     def get_supported_operations(cls) -> List[str]:
