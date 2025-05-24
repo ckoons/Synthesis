@@ -158,7 +158,7 @@ metrics_router = APIRouter()
 @app.get("/")
 async def root():
     """Root endpoint for the Synthesis API."""
-    from synthesis.utils.port_config import get_synthesis_port
+    from tekton.utils.port_config import get_synthesis_port
     port = get_synthesis_port()
     
     return {
@@ -233,7 +233,7 @@ async def shutdown_event():
 @app.get("/health")
 async def health_check():
     """Check the health of the Synthesis component following Tekton standards."""
-    from synthesis.utils.port_config import get_synthesis_port
+    from tekton.utils.port_config import get_synthesis_port
     
     # Try to get component health info
     # Even if the component isn't fully initialized, we'll return a basic health response

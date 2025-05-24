@@ -7,7 +7,7 @@ echo "=== Synthesis FastMCP Integration Test ==="
 echo "Testing Data Synthesis, Integration Orchestration, and Workflow Composition capabilities"
 
 # Configuration
-SYNTHESIS_PORT=${SYNTHESIS_PORT:-8011}
+SYNTHESIS_PORT=${SYNTHESIS_PORT:-8009}
 BASE_URL="http://localhost:${SYNTHESIS_PORT}"
 MCP_BASE_URL="${BASE_URL}/api/mcp/v2"
 
