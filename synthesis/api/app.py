@@ -211,6 +211,27 @@ async def startup_event():
         # Store component in app state
         app.state.component = component
         
+        # Explicitly register with Hermes
+        try:
+            # Simple direct approach
+            import aiohttp
+            async with aiohttp.ClientSession() as session:
+                reg_data = {
+                    "name": "synthesis",
+                    "version": "1.0.0",
+                    "type": "synthesis",
+                    "endpoint": f"http://localhost:{get_component_port('synthesis')}",
+                    "capabilities": ["code_generation", "integration", "execution"],
+                    "metadata": {"description": "Execution and integration engine"}
+                }
+                async with session.post("http://localhost:8001/api/register", json=reg_data) as resp:
+                    if resp.status == 200:
+                        logger.info("Successfully registered with Hermes")
+                    else:
+                        logger.warning(f"Failed to register with Hermes: HTTP {resp.status}")
+        except Exception as e:
+            logger.warning(f"Could not register with Hermes: {e}")
+        
         logger.info("Synthesis API server started")
         
     except Exception as e:
