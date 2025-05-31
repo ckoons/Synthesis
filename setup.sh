@@ -7,7 +7,7 @@
 set -e
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-TEKTON_DIR="$(dirname "$SCRIPT_DIR")"
+TEKTON_ROOT="$(dirname "$SCRIPT_DIR")"
 cd "$SCRIPT_DIR"
 
 echo "Setting up Synthesis - Execution Engine for Tekton"
@@ -32,9 +32,9 @@ echo "Upgrading pip..."
 pip install --upgrade pip
 
 # Install tekton-core if it exists
-if [ -d "$TEKTON_DIR/tekton-core" ]; then
+if [ -d "$TEKTON_ROOT/tekton-core" ]; then
     echo "Installing tekton-core..."
-    pip install -e "$TEKTON_DIR/tekton-core"
+    pip install -e "$TEKTON_ROOT/tekton-core"
 fi
 
 # Install dependencies
@@ -77,11 +77,11 @@ EOL
 fi
 
 # Make run_synthesis.sh executable
-if [ -f "$TEKTON_DIR/run_synthesis.sh" ]; then
-    chmod +x "$TEKTON_DIR/run_synthesis.sh"
+if [ -f "$TEKTON_ROOT/run_synthesis.sh" ]; then
+    chmod +x "$TEKTON_ROOT/run_synthesis.sh"
     echo "Made run_synthesis.sh executable"
 fi
 
 echo "Setup complete!"
 echo "To activate the virtual environment, run: source venv/bin/activate"
-echo "To run Synthesis, use: $TEKTON_DIR/run_synthesis.sh"
+echo "To run Synthesis, use: $TEKTON_ROOT/run_synthesis.sh"
