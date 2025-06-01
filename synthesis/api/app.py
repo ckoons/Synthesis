@@ -20,6 +20,10 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+# Add parent directory to path for shared utilities
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
 # Import Tekton utilities
 from tekton.utils.tekton_config import get_component_port
 from tekton.utils.tekton_errors import (
