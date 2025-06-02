@@ -25,7 +25,6 @@ fi
 cd "$SCRIPT_DIR"
 
 # Set environment variables
-export SYNTHESIS_PORT=8009
 export PYTHONPATH="$SCRIPT_DIR:$TEKTON_ROOT:$PYTHONPATH"
 
 # Create log directories
