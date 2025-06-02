@@ -8,11 +8,12 @@ following the Single Port Architecture pattern.
 
 import asyncio
 import json
-import logging
 import os
+import sys
 import time
 import uuid
 from typing import Dict, List, Any, Optional, Union
+from contextlib import asynccontextmanager
 
 import fastapi
 from fastapi import FastAPI, APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException, Query
@@ -20,12 +21,20 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-# Add parent directory to path for shared utilities
-import sys
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+# Add Tekton root to path if not already present
+tekton_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+if tekton_root not in sys.path:
+    sys.path.insert(0, tekton_root)
+
+# Import shared utilities
+from shared.utils.hermes_registration import HermesRegistration, heartbeat_loop
+from shared.utils.logging_setup import setup_component_logging
+from shared.utils.env_config import get_component_config
+from shared.utils.errors import StartupError
+from shared.utils.startup import component_startup, StartupMetrics
+from shared.utils.shutdown import GracefulShutdown
 
 # Import Tekton utilities
-from tekton.utils.tekton_config import get_component_port
 from tekton.utils.tekton_errors import (
     TektonError, 
     ConfigurationError,
@@ -42,12 +51,8 @@ from synthesis.core.execution_models import (
 )
 from synthesis.core.events import EventManager, WebSocketManager
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger("synthesis.api")
+# Set up logging
+logger = setup_component_logging("synthesis")
 
 
 # API Data Models
@@ -137,11 +142,98 @@ class SynthesisComponent(TektonLifecycle):
         return health_info
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context manager for Synthesis"""
+    # Startup
+    logger.info("Starting Synthesis API server...")
+    
+    # Get configuration
+    config = get_component_config()
+    port = config.synthesis.port if hasattr(config, 'synthesis') else int(os.environ.get("SYNTHESIS_PORT", 8009))
+    
+    try:
+        # Create and initialize component
+        component = SynthesisComponent(
+            component_id="synthesis",
+            component_name="Synthesis",
+            component_type="execution_engine",
+            version="1.0.0",
+            description="Execution and integration engine for Tekton",
+            hermes_registration=False  # We'll handle this manually
+        )
+        
+        # Initialize component
+        success = await component.initialize()
+        if not success:
+            logger.error("Failed to initialize Synthesis component")
+            raise StartupError("Failed to initialize Synthesis component")
+        
+        # Store component in app state
+        app.state.component = component
+        
+        # Register with Hermes
+        hermes_registration = HermesRegistration()
+        await hermes_registration.register_component(
+            component_name="synthesis",
+            port=port,
+            version="1.0.0",
+            capabilities=["code_generation", "integration", "execution"],
+            metadata={
+                "description": "Execution and integration engine",
+                "category": "execution"
+            }
+        )
+        app.state.hermes_registration = hermes_registration
+        
+        # Start heartbeat task
+        if hermes_registration.is_registered:
+            heartbeat_task = asyncio.create_task(heartbeat_loop(hermes_registration, "synthesis"))
+        
+        logger.info(f"Synthesis API server started on port {port}")
+        
+    except Exception as e:
+        logger.error(f"Error starting Synthesis API server: {e}")
+        raise StartupError(f"Failed to start Synthesis: {e}")
+    
+    yield
+    
+    # Shutdown
+    logger.info("Shutting down Synthesis API server...")
+    
+    # Cancel heartbeat task if running
+    if hermes_registration.is_registered and 'heartbeat_task' in locals():
+        heartbeat_task.cancel()
+        try:
+            await heartbeat_task
+        except asyncio.CancelledError:
+            pass
+    
+    try:
+        # Shut down component
+        if hasattr(app.state, "component") and app.state.component:
+            await app.state.component.shutdown()
+            logger.info("Synthesis component shut down successfully")
+            
+    except Exception as e:
+        logger.error(f"Error shutting down Synthesis: {e}")
+    
+    # Deregister from Hermes
+    if hasattr(app.state, "hermes_registration") and app.state.hermes_registration:
+        await app.state.hermes_registration.deregister("synthesis")
+    
+    # Give sockets time to close on macOS
+    await asyncio.sleep(0.5)
+    
+    logger.info("Synthesis API server shutdown complete")
+
+
 # Create FastAPI application
 app = FastAPI(
     title="Synthesis Execution Engine API",
     description="API for the Synthesis execution and integration engine",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # Add CORS middleware
@@ -191,74 +283,13 @@ async def get_execution_engine():
     return app.state.component.execution_engine
 
 
-# Startup and shutdown events
-@app.on_event("startup")
-async def startup_event():
-    """Initialize the Synthesis component on startup."""
-    try:
-        # Create and initialize component
-        component = SynthesisComponent(
-            component_id="synthesis",
-            component_name="Synthesis",
-            component_type="execution_engine",
-            version="1.0.0",
-            description="Execution and integration engine for Tekton",
-            hermes_registration=True
-        )
-        
-        # Initialize component
-        success = await component.initialize()
-        if not success:
-            logger.error("Failed to initialize Synthesis component")
-            return
-        
-        # Store component in app state
-        app.state.component = component
-        
-        # Explicitly register with Hermes
-        try:
-            # Simple direct approach
-            import aiohttp
-            async with aiohttp.ClientSession() as session:
-                reg_data = {
-                    "name": "synthesis",
-                    "version": "1.0.0",
-                    "type": "synthesis",
-                    "endpoint": f"http://localhost:{get_component_port('synthesis')}",
-                    "capabilities": ["code_generation", "integration", "execution"],
-                    "metadata": {"description": "Execution and integration engine"}
-                }
-                async with session.post("http://localhost:8001/api/register", json=reg_data) as resp:
-                    if resp.status == 200:
-                        logger.info("Successfully registered with Hermes")
-                    else:
-                        logger.warning(f"Failed to register with Hermes: HTTP {resp.status}")
-        except Exception as e:
-            logger.warning(f"Could not register with Hermes: {e}")
-        
-        logger.info("Synthesis API server started")
-        
-    except Exception as e:
-        logger.error(f"Error starting Synthesis API server: {e}")
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Shut down the Synthesis component."""
-    try:
-        if hasattr(app.state, "component") and app.state.component:
-            await app.state.component.shutdown()
-            logger.info("Synthesis component shut down successfully")
-            
-    except Exception as e:
-        logger.error(f"Error shutting down Synthesis component: {e}")
-
-
 # Health check endpoint
 @app.get("/health")
 async def health_check():
     """Check the health of the Synthesis component following Tekton standards."""
-    from tekton.utils.port_config import get_synthesis_port
+    # Get port from config
+    config = get_component_config()
+    port = config.synthesis.port if hasattr(config, 'synthesis') else int(os.environ.get("SYNTHESIS_PORT", 8009))
     
     # Try to get component health info
     # Even if the component isn't fully initialized, we'll return a basic health response
@@ -297,7 +328,7 @@ async def health_check():
         "status": health_status,
         "component": "synthesis",
         "version": "1.0.0",
-        "port": get_synthesis_port(),
+        "port": port,
         "message": message
     }
     
@@ -813,7 +844,8 @@ async def emit_event(
 if __name__ == "__main__":
     import uvicorn
     
-    # Get port from environment variable or use default
-    port = get_component_port("synthesis")
+    # Get port configuration
+    config = get_component_config()
+    port = config.synthesis.port if hasattr(config, 'synthesis') else int(os.environ.get("SYNTHESIS_PORT", 8009))
     
     uvicorn.run(app, host="0.0.0.0", port=port)
