@@ -47,8 +47,8 @@ class SynthesisComponent {
         if (window.SYNTHESIS_PORT) {
             return `http://localhost:${window.SYNTHESIS_PORT}/api`;
         }
-        // Default to standard port
-        return 'http://localhost:8009/api';
+        // Fallback to environment variable lookup
+        throw new Error('SYNTHESIS_PORT environment variable not configured');
     }
     
     /**
@@ -59,8 +59,8 @@ class SynthesisComponent {
         if (window.SYNTHESIS_PORT) {
             return `ws://localhost:${window.SYNTHESIS_PORT}/ws`;
         }
-        // Default to standard port
-        return 'ws://localhost:8009/ws';
+        // Fallback to environment variable lookup
+        throw new Error('SYNTHESIS_PORT environment variable not configured');
     }
     
     /**

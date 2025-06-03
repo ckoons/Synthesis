@@ -19,7 +19,8 @@ import fastapi
 from fastapi import FastAPI, APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import Field
+from tekton.models.base import TektonBaseModel
 
 # Add Tekton root to path if not already present
 tekton_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
@@ -56,7 +57,7 @@ logger = setup_component_logging("synthesis")
 
 
 # API Data Models
-class APIResponse(BaseModel):
+class APIResponse(TektonBaseModel):
     """Generic API response model."""
     status: str = "success"
     message: Optional[str] = None
@@ -64,7 +65,7 @@ class APIResponse(BaseModel):
     errors: Optional[List[str]] = None
 
 
-class ExecutionRequest(BaseModel):
+class ExecutionRequest(TektonBaseModel):
     """Execution request model."""
     plan: Dict[str, Any]
     context: Optional[Dict[str, Any]] = None
@@ -73,7 +74,7 @@ class ExecutionRequest(BaseModel):
     timeout: Optional[int] = Field(default=None)
 
 
-class ExecutionResponse(BaseModel):
+class ExecutionResponse(TektonBaseModel):
     """Execution response model."""
     execution_id: str
     status: str
@@ -82,7 +83,7 @@ class ExecutionResponse(BaseModel):
     errors: Optional[List[str]] = None
 
 
-class VariableRequest(BaseModel):
+class VariableRequest(TektonBaseModel):
     """Variable request model."""
     operation: str  # set, delete, increment, append, merge
     name: str
@@ -150,7 +151,7 @@ async def lifespan(app: FastAPI):
     
     # Get configuration
     config = get_component_config()
-    port = config.synthesis.port if hasattr(config, 'synthesis') else int(os.environ.get("SYNTHESIS_PORT", 8009))
+    port = config.synthesis.port if hasattr(config, 'synthesis') else int(os.environ.get("SYNTHESIS_PORT"))
     
     try:
         # Create and initialize component
@@ -289,7 +290,7 @@ async def health_check():
     """Check the health of the Synthesis component following Tekton standards."""
     # Get port from config
     config = get_component_config()
-    port = config.synthesis.port if hasattr(config, 'synthesis') else int(os.environ.get("SYNTHESIS_PORT", 8009))
+    port = config.synthesis.port if hasattr(config, 'synthesis') else int(os.environ.get("SYNTHESIS_PORT"))
     
     # Try to get component health info
     # Even if the component isn't fully initialized, we'll return a basic health response
@@ -846,6 +847,6 @@ if __name__ == "__main__":
     
     # Get port configuration
     config = get_component_config()
-    port = config.synthesis.port if hasattr(config, 'synthesis') else int(os.environ.get("SYNTHESIS_PORT", 8009))
+    port = config.synthesis.port if hasattr(config, 'synthesis') else int(os.environ.get("SYNTHESIS_PORT"))
     
     uvicorn.run(app, host="0.0.0.0", port=port)
