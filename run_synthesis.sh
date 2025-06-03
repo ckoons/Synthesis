@@ -53,7 +53,7 @@ sleep 2
 
 # Start the Synthesis service
 echo -e "${YELLOW}Starting Synthesis API server...${RESET}"
-python -m synthesis.api.app --port $SYNTHESIS_PORT > "$HOME/.tekton/logs/synthesis.log" 2>&1 &
+python -m synthesis > "$HOME/.tekton/logs/synthesis.log" 2>&1 &
 SYNTHESIS_PID=$!
 
 # Trap signals for graceful shutdown
