@@ -843,10 +843,11 @@ async def emit_event(
 
 # Main entry point
 if __name__ == "__main__":
-    import uvicorn
+    from shared.utils.socket_server import run_component_server
     
-    # Get port configuration
-    config = get_component_config()
-    port = config.synthesis.port if hasattr(config, 'synthesis') else int(os.environ.get("SYNTHESIS_PORT"))
-    
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    run_component_server(
+        component_name="synthesis",
+        app_module="synthesis.api.app",
+        default_port=int(os.environ.get("SYNTHESIS_PORT")),
+        reload=False
+    )
