@@ -34,6 +34,15 @@ from shared.utils.env_config import get_component_config
 from shared.utils.errors import StartupError
 from shared.utils.startup import component_startup, StartupMetrics
 from shared.utils.shutdown import GracefulShutdown
+from shared.utils.health_check import create_health_response
+from shared.api import (
+    create_standard_routers,
+    mount_standard_routers,
+    create_ready_endpoint,
+    create_discovery_endpoint,
+    get_openapi_configuration,
+    EndpointInfo
+)
 
 # Import Tekton utilities
 from tekton.utils.tekton_errors import (
@@ -54,6 +63,13 @@ from synthesis.core.events import EventManager, WebSocketManager
 
 # Set up logging
 logger = setup_component_logging("synthesis")
+
+# Component configuration
+COMPONENT_NAME = "Synthesis"
+COMPONENT_VERSION = "0.1.0"
+COMPONENT_DESCRIPTION = "Execution and integration engine for Tekton"
+start_time = None
+is_registered_with_hermes = False
 
 
 # API Data Models
@@ -146,6 +162,11 @@ class SynthesisComponent(TektonLifecycle):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager for Synthesis"""
+    global start_time, is_registered_with_hermes
+    
+    # Track startup time
+    start_time = time.time()
+    
     # Startup
     logger.info("Starting Synthesis API server...")
     
@@ -159,7 +180,7 @@ async def lifespan(app: FastAPI):
             component_id="synthesis",
             component_name="Synthesis",
             component_type="execution_engine",
-            version="1.0.0",
+            version=COMPONENT_VERSION,
             description="Execution and integration engine for Tekton",
             hermes_registration=False  # We'll handle this manually
         )
@@ -175,10 +196,10 @@ async def lifespan(app: FastAPI):
         
         # Register with Hermes
         hermes_registration = HermesRegistration()
-        await hermes_registration.register_component(
+        is_registered_with_hermes = await hermes_registration.register_component(
             component_name="synthesis",
             port=port,
-            version="1.0.0",
+            version=COMPONENT_VERSION,
             capabilities=["code_generation", "integration", "execution"],
             metadata={
                 "description": "Execution and integration engine",
@@ -229,11 +250,13 @@ async def lifespan(app: FastAPI):
     logger.info("Synthesis API server shutdown complete")
 
 
-# Create FastAPI application
+# Create FastAPI application with standard configuration
 app = FastAPI(
-    title="Synthesis Execution Engine API",
-    description="API for the Synthesis execution and integration engine",
-    version="1.0.0",
+    **get_openapi_configuration(
+        component_name=COMPONENT_NAME,
+        component_version=COMPONENT_VERSION,
+        component_description=COMPONENT_DESCRIPTION
+    ),
     lifespan=lifespan
 )
 
@@ -246,33 +269,97 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Create routers for path-based routing
-router = APIRouter(prefix="/api")
+# Create standard routers
+routers = create_standard_routers(COMPONENT_NAME)
+
+# Create additional routers for Synthesis-specific needs
 ws_router = APIRouter()
-metrics_router = APIRouter()
 
 # Root endpoint
-@app.get("/")
+@routers.root.get("/")
 async def root():
     """Root endpoint for the Synthesis API."""
     from tekton.utils.port_config import get_synthesis_port
     port = get_synthesis_port()
     
     return {
-        "name": "Synthesis Execution Engine API",
-        "version": "1.0.0",
+        "name": f"{COMPONENT_NAME} Execution Engine API",
+        "version": COMPONENT_VERSION,
         "status": "running",
-        "documentation": f"http://localhost:{port}/docs"
+        "description": COMPONENT_DESCRIPTION,
+        "documentation": "/api/v1/docs"
     }
 
 # Import and include MCP router
 from synthesis.api.fastmcp_endpoints import mcp_router
 
-# Include routers in app
-app.include_router(router)
-app.include_router(ws_router)
-app.include_router(metrics_router)
-app.include_router(mcp_router)
+# Add ready endpoint
+routers.root.add_api_route(
+    "/ready",
+    create_ready_endpoint(
+        component_name=COMPONENT_NAME,
+        component_version=COMPONENT_VERSION,
+        start_time=start_time or 0,
+        readiness_check=lambda: hasattr(app.state, "component") and app.state.component is not None
+    ),
+    methods=["GET"]
+)
+
+# Add discovery endpoint to v1 router
+routers.v1.add_api_route(
+    "/discovery",
+    create_discovery_endpoint(
+        component_name=COMPONENT_NAME,
+        component_version=COMPONENT_VERSION,
+        component_description=COMPONENT_DESCRIPTION,
+        endpoints=[
+            EndpointInfo(
+                path="/api/v1/executions",
+                method="POST",
+                description="Execute a synthesis plan"
+            ),
+            EndpointInfo(
+                path="/api/v1/executions",
+                method="GET",
+                description="List all executions"
+            ),
+            EndpointInfo(
+                path="/api/v1/executions/{execution_id}",
+                method="GET",
+                description="Get execution details"
+            ),
+            EndpointInfo(
+                path="/api/v1/metrics",
+                method="GET",
+                description="Get execution metrics"
+            ),
+            EndpointInfo(
+                path="/ws",
+                method="WEBSOCKET",
+                description="WebSocket connection for execution events"
+            )
+        ],
+        capabilities=[
+            "code_generation",
+            "integration",
+            "execution",
+            "event_streaming",
+            "metric_tracking"
+        ],
+        dependencies={
+            "hermes": "http://localhost:8001",
+            "rhetor": "http://localhost:8003"
+        },
+        metadata={
+            "websocket_endpoint": "/ws",
+            "documentation": "/api/v1/docs"
+        }
+    ),
+    methods=["GET"]
+)
+
+# NOTE: mount_standard_routers must be called AFTER all endpoint definitions
+# We'll move this to the end of the file
 
 # Dependency to get the execution engine
 async def get_execution_engine():
@@ -285,7 +372,7 @@ async def get_execution_engine():
 
 
 # Health check endpoint
-@app.get("/health")
+@routers.root.get("/health")
 async def health_check():
     """Check the health of the Synthesis component following Tekton standards."""
     # Get port from config
@@ -324,23 +411,19 @@ async def health_check():
         message = f"Synthesis API is running (basic health check only)"
         logger.warning(f"Error in health check, using basic response: {e}")
     
-    # Format response according to Tekton standards
-    standardized_health = {
-        "status": health_status,
-        "component": "synthesis",
-        "version": "1.0.0",
-        "port": port,
-        "message": message
-    }
-    
-    return JSONResponse(
-        content=standardized_health,
-        status_code=status_code
+    # Use standardized health response
+    return create_health_response(
+        component_name="synthesis",
+        port=port,
+        version=COMPONENT_VERSION,
+        status=health_status,
+        registered=is_registered_with_hermes,
+        details={"message": message}
     )
 
 
 # Metrics endpoint
-@metrics_router.get("/metrics")
+@routers.v1.get("/metrics")
 async def metrics():
     """Get metrics from the Synthesis component."""
     if not hasattr(app.state, "component") or not app.state.component:
@@ -410,7 +493,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
 
 # Execution endpoints
-@router.post("/executions", response_model=ExecutionResponse)
+@routers.v1.post("/executions", response_model=ExecutionResponse)
 async def create_execution(request: ExecutionRequest, execution_engine = Depends(get_execution_engine)):
     """
     Create a new execution.
@@ -468,7 +551,7 @@ async def create_execution(request: ExecutionRequest, execution_engine = Depends
         )
 
 
-@router.get("/executions/{execution_id}", response_model=ExecutionResponse)
+@routers.v1.get("/executions/{execution_id}", response_model=ExecutionResponse)
 async def get_execution(execution_id: str, execution_engine = Depends(get_execution_engine)):
     """
     Get execution details by ID.
@@ -499,7 +582,7 @@ async def get_execution(execution_id: str, execution_engine = Depends(get_execut
         )
 
 
-@router.get("/executions", response_model=APIResponse)
+@routers.v1.get("/executions", response_model=APIResponse)
 async def list_executions(
     status: Optional[str] = Query(None, description="Filter by status"),
     limit: int = Query(100, description="Maximum number of executions to return"),
@@ -557,7 +640,7 @@ async def list_executions(
         )
 
 
-@router.post("/executions/{execution_id}/cancel", response_model=APIResponse)
+@routers.v1.post("/executions/{execution_id}/cancel", response_model=APIResponse)
 async def cancel_execution(execution_id: str, execution_engine = Depends(get_execution_engine)):
     """
     Cancel an execution.
@@ -587,7 +670,7 @@ async def cancel_execution(execution_id: str, execution_engine = Depends(get_exe
         )
 
 
-@router.get("/executions/{execution_id}/results", response_model=APIResponse)
+@routers.v1.get("/executions/{execution_id}/results", response_model=APIResponse)
 async def get_execution_results(execution_id: str, execution_engine = Depends(get_execution_engine)):
     """
     Get execution results.
@@ -631,7 +714,7 @@ async def get_execution_results(execution_id: str, execution_engine = Depends(ge
         )
 
 
-@router.post("/executions/{execution_id}/variables", response_model=APIResponse)
+@routers.v1.post("/executions/{execution_id}/variables", response_model=APIResponse)
 async def update_execution_variables(
     execution_id: str,
     request: VariableRequest,
@@ -732,7 +815,7 @@ async def update_execution_variables(
 
 
 # Function registry endpoints
-@router.post("/functions/{function_name}", response_model=APIResponse)
+@routers.v1.post("/functions/{function_name}", response_model=APIResponse)
 async def register_function(
     function_name: str,
     function_code: str,
@@ -746,7 +829,7 @@ async def register_function(
     raise HTTPException(status_code=501, detail="Function registration via API is disabled in production")
 
 
-@router.get("/functions", response_model=APIResponse)
+@routers.v1.get("/functions", response_model=APIResponse)
 async def list_functions(execution_engine = Depends(get_execution_engine)):
     """
     List registered functions.
@@ -773,7 +856,7 @@ async def list_functions(execution_engine = Depends(get_execution_engine)):
 
 
 # Events endpoints
-@router.get("/events", response_model=APIResponse)
+@routers.v1.get("/events", response_model=APIResponse)
 async def list_events(
     event_type: Optional[str] = Query(None, description="Filter by event type"),
     limit: int = Query(100, description="Maximum number of events to return")
@@ -808,7 +891,7 @@ async def list_events(
         )
 
 
-@router.post("/events", response_model=APIResponse)
+@routers.v1.post("/events", response_model=APIResponse)
 async def emit_event(
     event_type: str,
     event_data: Dict[str, Any]
@@ -840,6 +923,13 @@ async def emit_event(
             errors=[str(e)]
         )
 
+
+# Mount standard routers AFTER all endpoint definitions
+mount_standard_routers(app, routers)
+
+# Include additional routers
+app.include_router(ws_router)
+app.include_router(mcp_router)
 
 # Main entry point
 if __name__ == "__main__":
