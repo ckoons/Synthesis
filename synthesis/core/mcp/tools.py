@@ -6,10 +6,26 @@ integration orchestration, and workflow composition functionality.
 """
 
 import json
+import logging
 import time
 import uuid
 from typing import Dict, Any, List, Optional
-from tekton.mcp.fastmcp.schema import MCPTool
+
+# Check if FastMCP is available
+try:
+    from tekton.mcp.fastmcp.schema import MCPTool
+    from tekton.mcp.fastmcp.decorators import mcp_tool
+    fastmcp_available = True
+except ImportError:
+    fastmcp_available = False
+    # Define dummy decorator
+    def mcp_tool(*args, **kwargs):
+        def decorator(func):
+            return func
+        return decorator
+    MCPTool = None
+
+logger = logging.getLogger(__name__)
 
 
 # ============================================================================
@@ -3322,3 +3338,19 @@ __all__ = [
     "analyze_workflow_performance",
     "optimize_workflow_execution"
 ]
+
+def get_all_tools(component_manager=None):
+    """Get all Synthesis MCP tools."""
+    # Synthesis defines tools as MCPTool objects, not decorated functions
+    all_tools = []
+    
+    # Add data synthesis tools
+    all_tools.extend([tool.dict() for tool in data_synthesis_tools])
+    
+    # Add integration orchestration tools
+    all_tools.extend([tool.dict() for tool in integration_orchestration_tools])
+    
+    # Add workflow composition tools
+    all_tools.extend([tool.dict() for tool in workflow_composition_tools])
+    
+    return all_tools

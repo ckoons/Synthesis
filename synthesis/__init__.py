@@ -9,11 +9,11 @@ __version__ = "1.0.0"
 __author__ = "Tekton Team"
 
 # Import core components for easier access
-from synthesis.core.execution_models import (
+from .core.execution_models import (
     ExecutionStage, ExecutionStatus, ExecutionPriority,
     ExecutionResult, ExecutionPlan, ExecutionContext
 )
-from synthesis.core.execution_engine import ExecutionEngine
+from .core.execution_engine import ExecutionEngine
 
 # Version information tuple
 VERSION = (1, 0, 0)
