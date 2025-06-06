@@ -212,6 +212,16 @@ async def lifespan(app: FastAPI):
         if hermes_registration.is_registered:
             heartbeat_task = asyncio.create_task(heartbeat_loop(hermes_registration, "synthesis"))
         
+        # Initialize Hermes MCP Bridge
+        try:
+            from synthesis.core.mcp.hermes_bridge import SynthesisMCPBridge
+            mcp_bridge = SynthesisMCPBridge(component.execution_engine)
+            await mcp_bridge.initialize()
+            app.state.mcp_bridge = mcp_bridge
+            logger.info("Hermes MCP Bridge initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize Hermes MCP Bridge: {e}")
+        
         logger.info(f"Synthesis API server started on port {port}")
         
     except Exception as e:
@@ -239,6 +249,11 @@ async def lifespan(app: FastAPI):
             
     except Exception as e:
         logger.error(f"Error shutting down Synthesis: {e}")
+    
+    # Shutdown Hermes MCP Bridge
+    if hasattr(app.state, "mcp_bridge") and app.state.mcp_bridge:
+        await app.state.mcp_bridge.shutdown()
+        logger.info("Hermes MCP Bridge shutdown complete")
     
     # Deregister from Hermes
     if hasattr(app.state, "hermes_registration") and app.state.hermes_registration:
