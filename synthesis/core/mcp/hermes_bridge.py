@@ -42,7 +42,7 @@ class SynthesisMCPBridge(MCPService):
         
         # Load FastMCP tools
         try:
-            from synthesis.core.mcp import get_all_tools
+            from synthesis.core.mcp.tools import get_all_tools
             self._fastmcp_tools = get_all_tools()
             logger.info(f"Loaded {len(self._fastmcp_tools)} FastMCP tools")
         except Exception as e:
