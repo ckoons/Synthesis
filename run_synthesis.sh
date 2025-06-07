@@ -29,8 +29,8 @@ source "$TEKTON_ROOT/shared/utils/setup_env.sh"
 setup_tekton_env "$SCRIPT_DIR" "$TEKTON_ROOT"
 
 # Create log directories
-mkdir -p "$HOME/.tekton/logs"
-mkdir -p "$HOME/.tekton/synthesis"
+mkdir -p "$TEKTON_ROOT/.tekton/logs"
+mkdir -p "$TEKTON_ROOT/.tekton/synthesis"
 
 # Error handling function
 handle_error() {
@@ -54,7 +54,7 @@ sleep 2
 
 # Start the Synthesis service
 echo -e "${YELLOW}Starting Synthesis API server...${RESET}"
-python -m synthesis > "$HOME/.tekton/logs/synthesis.log" 2>&1 &
+python -m synthesis > "$TEKTON_ROOT/.tekton/logs/synthesis.log" 2>&1 &
 SYNTHESIS_PID=$!
 
 # Trap signals for graceful shutdown
@@ -73,7 +73,7 @@ for i in {1..30}; do
     # Check if the process is still running
     if ! kill -0 $SYNTHESIS_PID 2>/dev/null; then
         echo -e "${RED}Synthesis process terminated unexpectedly${RESET}"
-        cat "$HOME/.tekton/logs/synthesis.log"
+        cat "$TEKTON_ROOT/.tekton/logs/synthesis.log"
         handle_error "Synthesis failed to start"
     fi
     

@@ -55,10 +55,10 @@ mkdir -p logs
 
 # Create data directories
 echo "Creating data directories..."
-mkdir -p "$HOME/.tekton/synthesis/data"
+mkdir -p "$TEKTON_ROOT/.tekton/synthesis/data"
 
 # Create configuration file if it doesn't exist
-CONFIG_DIR="$HOME/.tekton/synthesis"
+CONFIG_DIR="$TEKTON_ROOT/.tekton/synthesis"
 CONFIG_FILE="$CONFIG_DIR/config.json"
 if [ ! -f "$CONFIG_FILE" ]; then
     echo "Creating default configuration file..."
@@ -68,7 +68,7 @@ if [ ! -f "$CONFIG_FILE" ]; then
     "port": 8009,
     "log_level": "INFO",
     "max_concurrent_executions": 10,
-    "data_dir": "$HOME/.tekton/synthesis/data",
+    "data_dir": "$TEKTON_ROOT/.tekton/synthesis/data",
     "enable_remote_execution": false,
     "enable_telemetry": true
 }
