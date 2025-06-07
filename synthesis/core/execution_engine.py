@@ -55,7 +55,16 @@ class ExecutionEngine(LatentReasoningMixin):
         super().__init__()
         
         # Set up data directory
-        self.data_dir = data_dir or os.path.expanduser("~/.tekton/synthesis")
+        if data_dir:
+            self.data_dir = data_dir
+        else:
+            # Use $TEKTON_DATA_DIR/synthesis by default
+            default_data_dir = os.path.join(
+                os.environ.get('TEKTON_DATA_DIR', 
+                              os.path.join(os.environ.get('TEKTON_ROOT', os.path.expanduser('~')), '.tekton', 'data')),
+                'synthesis'
+            )
+            self.data_dir = default_data_dir
         os.makedirs(self.data_dir, exist_ok=True)
         
         # Set up Hermes URL
