@@ -172,7 +172,10 @@ async def lifespan(app: FastAPI):
     
     # Get configuration
     config = get_component_config()
-    port = config.synthesis.port if hasattr(config, 'synthesis') else int(os.environ.get("SYNTHESIS_PORT"))
+    try:
+        port = config.synthesis.port
+    except (AttributeError, TypeError):
+        port = int(os.environ.get("SYNTHESIS_PORT"))
     
     try:
         # Create and initialize component
@@ -392,7 +395,10 @@ async def health_check():
     """Check the health of the Synthesis component following Tekton standards."""
     # Get port from config
     config = get_component_config()
-    port = config.synthesis.port if hasattr(config, 'synthesis') else int(os.environ.get("SYNTHESIS_PORT"))
+    try:
+        port = config.synthesis.port
+    except (AttributeError, TypeError):
+        port = int(os.environ.get("SYNTHESIS_PORT"))
     
     # Try to get component health info
     # Even if the component isn't fully initialized, we'll return a basic health response
@@ -950,9 +956,15 @@ app.include_router(mcp_router)
 if __name__ == "__main__":
     from shared.utils.socket_server import run_component_server
     
+    config = get_component_config()
+    try:
+        port = config.synthesis.port
+    except (AttributeError, TypeError):
+        port = int(os.environ.get("SYNTHESIS_PORT"))
+    
     run_component_server(
         component_name="synthesis",
         app_module="synthesis.api.app",
-        default_port=int(os.environ.get("SYNTHESIS_PORT")),
+        default_port=port,
         reload=False
     )
