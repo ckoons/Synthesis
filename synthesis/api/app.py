@@ -13,7 +13,6 @@ import sys
 import time
 import uuid
 from typing import Dict, List, Any, Optional, Union
-from contextlib import asynccontextmanager
 
 import fastapi
 from fastapi import FastAPI, APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException, Query
@@ -28,12 +27,8 @@ if tekton_root not in sys.path:
     sys.path.insert(0, tekton_root)
 
 # Import shared utilities
-from shared.utils.hermes_registration import HermesRegistration, heartbeat_loop
+from shared.utils.global_config import GlobalConfig
 from shared.utils.logging_setup import setup_component_logging
-from shared.utils.env_config import get_component_config
-from shared.utils.errors import StartupError
-from shared.utils.startup import component_startup, StartupMetrics
-from shared.utils.shutdown import GracefulShutdown
 from shared.utils.health_check import create_health_response
 from shared.api import (
     create_standard_routers,
@@ -51,15 +46,13 @@ from tekton.utils.tekton_errors import (
     ConnectionError,
     AuthenticationError
 )
-from tekton.utils.tekton_lifecycle import TektonLifecycle
 
 # Import Synthesis components
-from synthesis.core.execution_engine import ExecutionEngine
+from synthesis.core.synthesis_component import SynthesisComponent
 from synthesis.core.execution_models import (
     ExecutionStage, ExecutionStatus, ExecutionPriority,
     ExecutionResult, ExecutionPlan, ExecutionContext
 )
-from synthesis.core.events import EventManager, WebSocketManager
 
 # Set up logging
 logger = setup_component_logging("synthesis")
@@ -68,8 +61,9 @@ logger = setup_component_logging("synthesis")
 COMPONENT_NAME = "Synthesis"
 COMPONENT_VERSION = "0.1.0"
 COMPONENT_DESCRIPTION = "Execution and integration engine for Tekton"
-start_time = None
-is_registered_with_hermes = False
+
+# Create component instance (singleton)
+component = SynthesisComponent()
 
 
 # API Data Models
@@ -106,166 +100,23 @@ class VariableRequest(TektonBaseModel):
     value: Optional[Any] = None
 
 
-class SynthesisComponent(TektonLifecycle):
-    """
-    Synthesis component lifecycle manager.
-    
-    This class manages the lifecycle of the Synthesis component,
-    including initialization, startup, shutdown, and health checking.
-    """
-    
-    async def initialize(self) -> bool:
-        """
-        Initialize the Synthesis component.
-        
-        Returns:
-            True if initialization was successful
-        """
-        try:
-            # Create execution engine
-            self.execution_engine = ExecutionEngine()
-            self.track_resource(self.execution_engine)
-            
-            # Create event manager
-            self.event_manager = EventManager.get_instance()
-            
-            # Create WebSocket manager
-            self.ws_manager = WebSocketManager()
-            
-            logger.info("Synthesis component initialized successfully")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error initializing Synthesis component: {e}")
-            return False
-            
-    async def health_check(self) -> Dict[str, Any]:
-        """
-        Check the health of the Synthesis component.
-        
-        Returns:
-            Health check information
-        """
-        health_info = await super().health_check()
-        
-        # Add component-specific health info
-        if hasattr(self, "execution_engine"):
-            health_info.update({
-                "active_executions": len(self.execution_engine.active_executions),
-                "execution_capacity": self.execution_engine.max_concurrent_executions,
-                "execution_load": len(self.execution_engine.active_executions) / self.execution_engine.max_concurrent_executions
-            })
-        
-        return health_info
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Lifespan context manager for Synthesis"""
-    global start_time, is_registered_with_hermes
-    
-    # Track startup time
-    start_time = time.time()
-    
-    # Startup
-    logger.info("Starting Synthesis API server...")
-    
-    # Get configuration
-    config = get_component_config()
+# Startup callback for component initialization
+async def startup_callback():
+    """Component startup callback."""
+    global component
     try:
-        port = config.synthesis.port
-    except (AttributeError, TypeError):
-        port = int(os.environ.get("SYNTHESIS_PORT"))
-    
-    try:
-        # Create and initialize component
-        component = SynthesisComponent(
-            component_id="synthesis",
-            component_name="Synthesis",
-            component_type="execution_engine",
-            version=COMPONENT_VERSION,
-            description="Execution and integration engine for Tekton",
-            hermes_registration=False  # We'll handle this manually
+        await component.initialize(
+            capabilities=component.get_capabilities(),
+            metadata=component.get_metadata()
         )
         
-        # Initialize component
-        success = await component.initialize()
-        if not success:
-            logger.error("Failed to initialize Synthesis component")
-            raise StartupError("Failed to initialize Synthesis component")
+        # Initialize MCP bridge after component startup
+        await component.initialize_mcp_bridge()
         
-        # Store component in app state
-        app.state.component = component
-        
-        # Register with Hermes
-        hermes_registration = HermesRegistration()
-        is_registered_with_hermes = await hermes_registration.register_component(
-            component_name="synthesis",
-            port=port,
-            version=COMPONENT_VERSION,
-            capabilities=["code_generation", "integration", "execution"],
-            metadata={
-                "description": "Execution and integration engine",
-                "category": "execution"
-            }
-        )
-        app.state.hermes_registration = hermes_registration
-        
-        # Start heartbeat task
-        if hermes_registration.is_registered:
-            heartbeat_task = asyncio.create_task(heartbeat_loop(hermes_registration, "synthesis"))
-        
-        # Initialize Hermes MCP Bridge
-        try:
-            from synthesis.core.mcp.hermes_bridge import SynthesisMCPBridge
-            mcp_bridge = SynthesisMCPBridge(component.execution_engine)
-            await mcp_bridge.initialize()
-            app.state.mcp_bridge = mcp_bridge
-            logger.info("Hermes MCP Bridge initialized successfully")
-        except Exception as e:
-            logger.error(f"Failed to initialize Hermes MCP Bridge: {e}")
-        
-        logger.info(f"Synthesis API server started on port {port}")
-        
+        logger.info(f"Synthesis API server started successfully")
     except Exception as e:
-        logger.error(f"Error starting Synthesis API server: {e}")
-        raise StartupError(f"Failed to start Synthesis: {e}")
-    
-    yield
-    
-    # Shutdown
-    logger.info("Shutting down Synthesis API server...")
-    
-    # Cancel heartbeat task if running
-    if hermes_registration.is_registered and 'heartbeat_task' in locals():
-        heartbeat_task.cancel()
-        try:
-            await heartbeat_task
-        except asyncio.CancelledError:
-            pass
-    
-    try:
-        # Shut down component
-        if hasattr(app.state, "component") and app.state.component:
-            await app.state.component.shutdown()
-            logger.info("Synthesis component shut down successfully")
-            
-    except Exception as e:
-        logger.error(f"Error shutting down Synthesis: {e}")
-    
-    # Shutdown Hermes MCP Bridge
-    if hasattr(app.state, "mcp_bridge") and app.state.mcp_bridge:
-        await app.state.mcp_bridge.shutdown()
-        logger.info("Hermes MCP Bridge shutdown complete")
-    
-    # Deregister from Hermes
-    if hasattr(app.state, "hermes_registration") and app.state.hermes_registration:
-        await app.state.hermes_registration.deregister("synthesis")
-    
-    # Give sockets time to close on macOS
-    await asyncio.sleep(0.5)
-    
-    logger.info("Synthesis API server shutdown complete")
+        logger.error(f"Failed to start Synthesis: {e}")
+        raise
 
 
 # Create FastAPI application with standard configuration
@@ -275,7 +126,7 @@ app = FastAPI(
         component_version=COMPONENT_VERSION,
         component_description=COMPONENT_DESCRIPTION
     ),
-    lifespan=lifespan
+    on_startup=[startup_callback]
 )
 
 # Add CORS middleware
@@ -297,8 +148,8 @@ ws_router = APIRouter()
 @routers.root.get("/")
 async def root():
     """Root endpoint for the Synthesis API."""
-    from tekton.utils.port_config import get_synthesis_port
-    port = get_synthesis_port()
+    global_config = GlobalConfig.get_instance()
+    port = global_config.config.synthesis.port
     
     return {
         "name": f"{COMPONENT_NAME} Execution Engine API",
@@ -317,8 +168,8 @@ routers.root.add_api_route(
     create_ready_endpoint(
         component_name=COMPONENT_NAME,
         component_version=COMPONENT_VERSION,
-        start_time=start_time or 0,
-        readiness_check=lambda: hasattr(app.state, "component") and app.state.component is not None
+        start_time=time.time(),
+        readiness_check=lambda: component is not None
     ),
     methods=["GET"]
 )
@@ -382,11 +233,11 @@ routers.v1.add_api_route(
 # Dependency to get the execution engine
 async def get_execution_engine():
     """Get the execution engine or raise an error if not initialized."""
-    if not hasattr(app.state, "component") or not app.state.component:
+    if not component:
         raise HTTPException(status_code=503, detail="Synthesis component not initialized")
-    if not hasattr(app.state.component, "execution_engine") or not app.state.component.execution_engine:
+    if not component.execution_engine:
         raise HTTPException(status_code=503, detail="Execution engine not initialized")
-    return app.state.component.execution_engine
+    return component.execution_engine
 
 
 # Health check endpoint
@@ -394,18 +245,15 @@ async def get_execution_engine():
 async def health_check():
     """Check the health of the Synthesis component following Tekton standards."""
     # Get port from config
-    config = get_component_config()
-    try:
-        port = config.synthesis.port
-    except (AttributeError, TypeError):
-        port = int(os.environ.get("SYNTHESIS_PORT"))
+    global_config = GlobalConfig.get_instance()
+    port = global_config.config.synthesis.port
     
     # Try to get component health info
     # Even if the component isn't fully initialized, we'll return a basic health response
     try:
-        if hasattr(app.state, "component") and app.state.component:
+        if component:
             # Component exists, get proper health info
-            health_info = await app.state.component.health_check()
+            health_info = component.get_component_status()
             
             # Set status code based on health
             status_code = 200
@@ -438,7 +286,7 @@ async def health_check():
         port=port,
         version=COMPONENT_VERSION,
         status=health_status,
-        registered=is_registered_with_hermes,
+        registered=component.global_config.is_registered_with_hermes if component else False,
         details={"message": message}
     )
 
@@ -447,7 +295,7 @@ async def health_check():
 @routers.v1.get("/metrics")
 async def metrics():
     """Get metrics from the Synthesis component."""
-    if not hasattr(app.state, "component") or not app.state.component:
+    if not component:
         return JSONResponse(
             content={"status": "unavailable", "message": "Synthesis component not initialized"},
             status_code=503
@@ -478,11 +326,11 @@ async def websocket_endpoint(websocket: WebSocket):
     WebSocket endpoint for real-time execution updates.
     """
     # Get WebSocket manager
-    if not hasattr(app.state, "component") or not app.state.component or not hasattr(app.state.component, "ws_manager"):
+    if not component or not component.initialized or not component.ws_manager:
         await websocket.close(code=1011, reason="Synthesis component not initialized")
         return
     
-    ws_manager = app.state.component.ws_manager
+    ws_manager = component.ws_manager
     
     # Accept connection
     await websocket.accept()
@@ -887,10 +735,10 @@ async def list_events(
     """
     try:
         # Get event manager
-        if not hasattr(app.state, "component") or not app.state.component:
+        if not component:
             raise HTTPException(status_code=503, detail="Synthesis component not initialized")
             
-        event_manager = EventManager.get_instance()
+        event_manager = component.event_manager
         
         # Get recent events
         events = event_manager.get_recent_events(event_type, limit)
@@ -922,10 +770,10 @@ async def emit_event(
     """
     try:
         # Get event manager
-        if not hasattr(app.state, "component") or not app.state.component:
+        if not component:
             raise HTTPException(status_code=503, detail="Synthesis component not initialized")
             
-        event_manager = EventManager.get_instance()
+        event_manager = component.event_manager
         
         # Emit event
         event_id = await event_manager.emit(event_type, event_data)
@@ -956,11 +804,8 @@ app.include_router(mcp_router)
 if __name__ == "__main__":
     from shared.utils.socket_server import run_component_server
     
-    config = get_component_config()
-    try:
-        port = config.synthesis.port
-    except (AttributeError, TypeError):
-        port = int(os.environ.get("SYNTHESIS_PORT"))
+    global_config = GlobalConfig.get_instance()
+    port = global_config.config.synthesis.port
     
     run_component_server(
         component_name="synthesis",
